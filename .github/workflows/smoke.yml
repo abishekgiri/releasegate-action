@@ -1,0 +1,35 @@
+name: Smoke test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The smoke test exercises the Action against this repo's own
+      # PR using a test tenant.  RELEASEGATE_SMOKE_TENANT_ID and
+      # RELEASEGATE_SMOKE_SIGNING_KEY must be set as repo secrets
+      # in this Action's own repo.  These are NOT production tenant
+      # credentials — they are a throwaway tenant used only for
+      # smoke-testing this Action.
+      - uses: ./
+        if: env.RELEASEGATE_SMOKE_TENANT_ID != ''
+        env:
+          RELEASEGATE_SMOKE_TENANT_ID: ${{ secrets.RELEASEGATE_SMOKE_TENANT_ID }}
+        with:
+          tenant_id: ${{ secrets.RELEASEGATE_SMOKE_TENANT_ID }}
+          signing_key: ${{ secrets.RELEASEGATE_SMOKE_SIGNING_KEY }}
+          fail_on: ''   # smoke test never fails the build itself
+
+      - name: Skip note (no smoke secrets set)
+        if: env.RELEASEGATE_SMOKE_TENANT_ID == ''
+        env:
+          RELEASEGATE_SMOKE_TENANT_ID: ${{ secrets.RELEASEGATE_SMOKE_TENANT_ID }}
+        run: |
+          echo "Smoke test skipped: RELEASEGATE_SMOKE_TENANT_ID not configured."
+          echo "Configure it in repo secrets to enable end-to-end smoke testing."

@@ -1,0 +1,106 @@
+name: 'ReleaseGate'
+description: 'Sign and verify your GitHub deploys against a ReleaseGate tenant. Outputs a DSSE-attested governance decision that auditors can verify offline.'
+branding:
+  icon: 'shield'
+  color: 'purple'
+
+inputs:
+  tenant_id:
+    description: 'Your ReleaseGate tenant identifier. Email hello@releasegate.io to provision one.'
+    required: true
+  signing_key:
+    description: 'Ed25519 PEM private key for your tenant. Pass via a GitHub Actions secret, never inline.'
+    required: true
+  pr_number:
+    description: 'Pull request number to analyze. Defaults to the PR number from the triggering event.'
+    required: false
+    default: ''
+  fail_on:
+    description: 'Comma-separated decision values that should fail this Action. Default: "BLOCK,FAIL,DENIED".'
+    required: false
+    default: 'BLOCK,FAIL,DENIED'
+  releasegate_ref:
+    description: 'Git ref of the main releasegate repo to install. Pinned per Action release.'
+    required: false
+    default: '798e8211f75f2a4a773f597fff7a0e6a74381c2f'
+
+outputs:
+  decision:
+    description: 'The verdict: ALLOW, BLOCK, WARN, FAIL, DENIED, etc.'
+    value: ${{ steps.run.outputs.decision }}
+  decision_id:
+    description: 'Deterministic decision_id (analysis-<sha256[:24]>).'
+    value: ${{ steps.run.outputs.decision_id }}
+  attestation_id:
+    description: 'Per-run unique attestation_id from the DSSE envelope.'
+    value: ${{ steps.run.outputs.attestation_id }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install releasegate (pinned)
+      shell: bash
+      run: |
+        set -euo pipefail
+        pip install --quiet "git+https://github.com/abishekgiri/change-risk-predictor-@${{ inputs.releasegate_ref }}"
+        releasegate --help >/dev/null
+
+    - name: Run analyze-pr
+      id: run
+      shell: bash
+      env:
+        RELEASEGATE_TENANT_ID: ${{ inputs.tenant_id }}
+        RELEASEGATE_SIGNING_KEY: ${{ inputs.signing_key }}
+        RELEASEGATE_ATTESTATION_KEY_ID: rg-customer
+      run: |
+        set -euo pipefail
+        PR_NUMBER="${{ inputs.pr_number }}"
+        if [ -z "$PR_NUMBER" ] && [ -n "${{ github.event.pull_request.number }}" ]; then
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+        fi
+        if [ -z "$PR_NUMBER" ]; then
+          echo "::error::pr_number not supplied and not derivable from event."
+          exit 2
+        fi
+
+        mkdir -p .releasegate-out
+        releasegate analyze-pr \
+          --repo "${{ github.repository }}" \
+          --pr "$PR_NUMBER" \
+          --tenant "${{ inputs.tenant_id }}" \
+          --emit-attestation .releasegate-out/attestation.json \
+          --emit-dsse .releasegate-out/attestation.dsse.json \
+          --output .releasegate-out/report.json
+
+        # Surface outputs for downstream steps
+        DECISION=$(python -c 'import json,sys; print(json.load(open(".releasegate-out/report.json"))["decision"])')
+        DECISION_ID=$(python -c 'import json,sys; print(json.load(open(".releasegate-out/report.json"))["decision_id"])')
+        ATTESTATION_ID=$(python -c 'import json,sys; d=json.load(open(".releasegate-out/attestation.dsse.json")); print(d.get("attestation_id",""))' || echo "")
+        echo "decision=$DECISION"       >> "$GITHUB_OUTPUT"
+        echo "decision_id=$DECISION_ID" >> "$GITHUB_OUTPUT"
+        echo "attestation_id=$ATTESTATION_ID" >> "$GITHUB_OUTPUT"
+        echo "## ReleaseGate decision: \`$DECISION\`" >> "$GITHUB_STEP_SUMMARY"
+        echo "decision_id: \`$DECISION_ID\`" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload attestation artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: releasegate-attestation
+        path: .releasegate-out/
+
+    - name: Gate on decision
+      shell: bash
+      run: |
+        set -euo pipefail
+        IFS=',' read -ra FAILS <<< "${{ inputs.fail_on }}"
+        for F in "${FAILS[@]}"; do
+          if [ "${{ steps.run.outputs.decision }}" = "$F" ]; then
+            echo "::error::ReleaseGate decision '$F' triggers gate failure."
+            exit 1
+          fi
+        done
