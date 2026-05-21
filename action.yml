@@ -1,5 +1,5 @@
 name: 'ReleaseGate'
-description: 'Sign and verify your GitHub deploys against a ReleaseGate tenant. Outputs a DSSE-attested governance decision that auditors can verify offline.'
+description: 'description: 'Sign GitHub deploys with your ReleaseGate tenant key. Output a DSSE attestation an auditor can verify offline.'
 branding:
   icon: 'shield'
   color: 'purple'
