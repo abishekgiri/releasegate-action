@@ -6,8 +6,11 @@ verify offline, without access to your infrastructure.
 
 This Action is the customer-installable companion to
 [ReleaseGate](https://github.com/abishekgiri/change-risk-predictor-).
-See [the trust page](https://releasegate.io/trust) for our security
-posture and [pricing](https://releasegate.io/pricing) for tiers.
+Our security posture, subprocessor list, and SOC 2 status are
+documented in the
+[main repo's trust page](https://github.com/abishekgiri/change-risk-predictor-/blob/main/dashboard-ui/src/app/trust/page.tsx).
+Pricing is by conversation — email **hello@releasegate.io** for
+tier details and to start a design-partner pilot.
 
 ## What this Action does
 
@@ -26,8 +29,8 @@ On every pull request (or workflow_dispatch), this Action:
 
 1. Email **hello@releasegate.io** to provision a tenant. You will
    receive a tenant identifier and an Ed25519 signing key. The
-   design-partner phase is free; see
-   [pricing](https://releasegate.io/pricing).
+   design-partner phase is free; email **hello@releasegate.io**
+   for tier details once you exit the pilot window.
 2. Add the tenant identifier and signing key as repository
    secrets: `RELEASEGATE_TENANT_ID` and `RELEASEGATE_SIGNING_KEY`.
 3. Add `.github/workflows/releasegate.yml`:
@@ -105,8 +108,9 @@ No ReleaseGate server access is required to verify.
 - The Action itself is open source and pinned to a specific commit
   of the main releasegate repo per release. Audit either repo at
   will.
-- Security reports: **security@releasegate.io**. See
-  [trust](https://releasegate.io/trust).
+- Security reports: **security@releasegate.io**. Subprocessor list
+  and SOC 2 status are documented in the
+  [main repo's trust page](https://github.com/abishekgiri/change-risk-predictor-/blob/main/dashboard-ui/src/app/trust/page.tsx).
 
 ## License
 
