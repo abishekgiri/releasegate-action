@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: releasegate/action@v0.1.0
+      - uses: releasegate/releasegate-action@v0.1.2
         with:
           tenant_id: ${{ secrets.RELEASEGATE_TENANT_ID }}
           signing_key: ${{ secrets.RELEASEGATE_SIGNING_KEY }}
@@ -115,5 +115,5 @@ MIT.
 ## Versioning
 
 This Action follows semver. Pin to a specific tag (e.g.
-`releasegate/action@v0.1.0`) in production. The
+`releasegate/releasegate-action@v0.1.2`) in production. The
 `releasegate_ref` input pins the main engine SHA at the same time.
