@@ -22,7 +22,7 @@ inputs:
   releasegate_ref:
     description: 'Git ref of the main releasegate repo to install. Pinned per Action release.'
     required: false
-    default: '5b901c8efac31407aaaf8aaff78bd1f35b598d36'
+    default: '2a1c3766e5593dbafcd9be66a601cc3cf6fcf635'
 
 outputs:
   decision:
