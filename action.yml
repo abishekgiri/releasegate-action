@@ -73,7 +73,10 @@ runs:
         # step's path base are not guaranteed to be the same directory, so
         # relative paths can be written in one place and looked for in
         # another.  Using $GITHUB_WORKSPACE for both removes the ambiguity.
-        OUT_DIR="${GITHUB_WORKSPACE:-$PWD}/.releasegate-out"
+        # NOTE: the dir name must NOT start with a dot — actions/upload-artifact@v4
+        # excludes hidden files/dirs by default (include-hidden-files=false),
+        # which silently drops everything under a ".releasegate-out" dotdir.
+        OUT_DIR="${GITHUB_WORKSPACE:-$PWD}/releasegate-out"
         mkdir -p "$OUT_DIR"
         releasegate analyze-pr \
           --repo "${{ github.repository }}" \
@@ -97,7 +100,7 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: releasegate-attestation
-        path: ${{ github.workspace }}/.releasegate-out/
+        path: ${{ github.workspace }}/releasegate-out/
         if-no-files-found: error
 
     - name: Gate on decision
