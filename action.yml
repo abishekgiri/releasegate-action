@@ -68,19 +68,25 @@ runs:
           exit 2
         fi
 
-        mkdir -p .releasegate-out
+        # Anchor the output dir to the workspace with an absolute path.
+        # In a composite action the run step's cwd and the upload-artifact
+        # step's path base are not guaranteed to be the same directory, so
+        # relative paths can be written in one place and looked for in
+        # another.  Using $GITHUB_WORKSPACE for both removes the ambiguity.
+        OUT_DIR="${GITHUB_WORKSPACE:-$PWD}/.releasegate-out"
+        mkdir -p "$OUT_DIR"
         releasegate analyze-pr \
           --repo "${{ github.repository }}" \
           --pr "$PR_NUMBER" \
           --tenant "${{ inputs.tenant_id }}" \
-          --emit-attestation .releasegate-out/attestation.json \
-          --emit-dsse .releasegate-out/attestation.dsse.json \
-          --output .releasegate-out/report.json
+          --emit-attestation "$OUT_DIR/attestation.json" \
+          --emit-dsse "$OUT_DIR/attestation.dsse.json" \
+          --output "$OUT_DIR/report.json"
 
         # Surface outputs for downstream steps
-        DECISION=$(python -c 'import json,sys; print(json.load(open(".releasegate-out/report.json"))["decision"])')
-        DECISION_ID=$(python -c 'import json,sys; print(json.load(open(".releasegate-out/report.json"))["decision_id"])')
-        ATTESTATION_ID=$(python -c 'import json,sys; d=json.load(open(".releasegate-out/attestation.dsse.json")); print(d.get("attestation_id",""))' || echo "")
+        DECISION=$(python -c "import json,sys; print(json.load(open('$OUT_DIR/report.json'))['decision'])")
+        DECISION_ID=$(python -c "import json,sys; print(json.load(open('$OUT_DIR/report.json'))['decision_id'])")
+        ATTESTATION_ID=$(python -c "import json,sys; d=json.load(open('$OUT_DIR/attestation.dsse.json')); print(d.get('attestation_id',''))" || echo "")
         echo "decision=$DECISION"       >> "$GITHUB_OUTPUT"
         echo "decision_id=$DECISION_ID" >> "$GITHUB_OUTPUT"
         echo "attestation_id=$ATTESTATION_ID" >> "$GITHUB_OUTPUT"
@@ -91,7 +97,8 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: releasegate-attestation
-        path: .releasegate-out/
+        path: ${{ github.workspace }}/.releasegate-out/
+        if-no-files-found: error
 
     - name: Gate on decision
       shell: bash
