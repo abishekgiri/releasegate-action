@@ -100,6 +100,13 @@ No ReleaseGate server access is required to verify.
   hello@releasegate.io.
 - It does not yet support Kubernetes admission control. See the
   main repo for the roadmap.
+- The risk score in stateless customer-side runs does not include
+  historical signal enrichment (churn, hotspot density, prior-
+  incident proximity). Those signals require persistent history
+  across runs, which the customer CI runner does not have. The
+  decision gate, policy evaluation, and signed attestation are
+  fully functional; only the risk-score amplification is reduced.
+  Server-side dashboard runs include the full signal set.
 
 ## Security
 
